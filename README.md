@@ -9,7 +9,7 @@ This contains everything you need to run your app locally.
 ```bash
 npm install --force
 npm install --legacy-peer-deps ```
-
+```
 
 
 
