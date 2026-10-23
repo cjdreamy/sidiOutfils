@@ -1,0 +1,227 @@
+{
+  "entities": {
+    "AdminRole": {
+      "title": "AdminRole",
+      "description": "Authorized store owner or manager account record for Sidi Outfits.",
+      "type": "object",
+      "properties": {
+        "uid": {
+          "type": "string",
+          "description": "Firebase Auth UID of the store owner.",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "email": {
+          "type": "string",
+          "description": "Verified email address of the store owner.",
+          "minLength": 3,
+          "maxLength": 160
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp when owner access was initialized."
+        }
+      },
+      "required": ["uid", "email", "createdAt"]
+    },
+    "Product": {
+      "title": "Product",
+      "description": "A catalog item in Sidi Outfits such as a handbag, keychain, dress, or outfit.",
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Display title of the fashion item.",
+          "minLength": 1,
+          "maxLength": 120
+        },
+        "category": {
+          "type": "string",
+          "description": "Product category classification.",
+          "enum": ["Handbags", "Dresses", "Outfits", "Keychains", "Accessories"]
+        },
+        "price": {
+          "type": "number",
+          "description": "Unit price in USD."
+        },
+        "quantity": {
+          "type": "number",
+          "description": "Available stock count in inventory."
+        },
+        "soldCount": {
+          "type": "number",
+          "description": "Cumulative units booked by customers."
+        },
+        "description": {
+          "type": "string",
+          "description": "Craftsmanship, material, and sizing details.",
+          "minLength": 1,
+          "maxLength": 1000
+        },
+        "imageUrl": {
+          "type": "string",
+          "description": "Compressed data URI or image URL for the product.",
+          "minLength": 1,
+          "maxLength": 650000
+        },
+        "sku": {
+          "type": "string",
+          "description": "Stock keeping unit code.",
+          "minLength": 1,
+          "maxLength": 40
+        },
+        "featured3dModel": {
+          "type": "string",
+          "description": "Associated 3D procedural model identifier.",
+          "enum": ["handbag", "dress", "keychain", "outfit", "none"]
+        },
+        "isPublished": {
+          "type": "boolean",
+          "description": "Whether the item is visible in the public storefront."
+        },
+        "ownerId": {
+          "type": "string",
+          "description": "UID of the owner who uploaded or seeded the item.",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server creation timestamp."
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server last update timestamp."
+        }
+      },
+      "required": [
+        "name",
+        "category",
+        "price",
+        "quantity",
+        "soldCount",
+        "description",
+        "imageUrl",
+        "sku",
+        "featured3dModel",
+        "isPublished",
+        "ownerId",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "Booking": {
+      "title": "Booking",
+      "description": "A customer order booking recorded for the Sidi Outfits owner dashboard.",
+      "type": "object",
+      "properties": {
+        "orderNumber": {
+          "type": "string",
+          "description": "Human-readable booking code (e.g. SIDI-4821).",
+          "minLength": 4,
+          "maxLength": 32
+        },
+        "customerId": {
+          "type": "string",
+          "description": "Authenticated UID of the customer who placed the booking.",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "customerName": {
+          "type": "string",
+          "description": "Customer full name for delivery/pickup.",
+          "minLength": 1,
+          "maxLength": 100
+        },
+        "customerPhone": {
+          "type": "string",
+          "description": "Customer mobile number for WhatsApp/SMS confirmation.",
+          "minLength": 5,
+          "maxLength": 40
+        },
+        "deliveryAddress": {
+          "type": "string",
+          "description": "Delivery address or boutique pickup note.",
+          "minLength": 3,
+          "maxLength": 300
+        },
+        "notes": {
+          "type": "string",
+          "description": "Optional sizing or gift wrapping notes.",
+          "minLength": 0,
+          "maxLength": 400
+        },
+        "itemsSummary": {
+          "type": "string",
+          "description": "Concise human-readable summary of booked items and quantities.",
+          "minLength": 1,
+          "maxLength": 1500
+        },
+        "itemIds": {
+          "type": "string",
+          "description": "Comma-separated product IDs included in the booking.",
+          "minLength": 1,
+          "maxLength": 600
+        },
+        "totalQuantity": {
+          "type": "number",
+          "description": "Total number of units in this booking."
+        },
+        "totalAmount": {
+          "type": "number",
+          "description": "Total order price in USD."
+        },
+        "status": {
+          "type": "string",
+          "description": "Current fulfillment status of the booking.",
+          "enum": ["Pending", "Confirmed", "Ready", "Completed", "Cancelled"]
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp when booking was placed."
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp when booking was last updated."
+        }
+      },
+      "required": [
+        "orderNumber",
+        "customerId",
+        "customerName",
+        "customerPhone",
+        "deliveryAddress",
+        "notes",
+        "itemsSummary",
+        "itemIds",
+        "totalQuantity",
+        "totalAmount",
+        "status",
+        "createdAt",
+        "updatedAt"
+      ]
+    }
+  },
+  "firestore": {
+    "/admins/{adminId}": {
+      "schema": { "$ref": "#/entities/AdminRole" },
+      "description": "Stores authorized owner UIDs for Sidi Outfits management."
+    },
+    "/products/{productId}": {
+      "schema": { "$ref": "#/entities/Product" },
+      "description": "Publicly browseable fashion catalog items managed by the store owner."
+    },
+    "/bookings/{bookingId}": {
+      "schema": { "$ref": "#/entities/Booking" },
+      "description": "Customer bookings visible to the customer who placed them and to store owners."
+    }
+  }
+}

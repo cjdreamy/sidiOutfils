@@ -1,0 +1,204 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Pillar 1: Global Safety Net (Default Deny)
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Reusable Hardened Primitives
+    function isValidId(id) {
+      return id is string && id.size() >= 1 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isVerifiedUser() {
+      return isSignedIn() && request.auth.token.email_verified == true;
+    }
+
+    function isBootstrappedOwner() {
+      return isVerifiedUser() && request.auth.token.email == 'cjdreamy402@gmail.com';
+    }
+
+    function isAdmin() {
+      return isBootstrappedOwner() || (
+        isVerifiedUser() &&
+        exists(/databases/$(database)/documents/admins/$(request.auth.uid))
+      );
+    }
+
+    // Entity Blueprint 1: AdminRole
+    function isValidAdminRole(data) {
+      return data.keys().hasAll(['uid', 'email', 'createdAt']) &&
+        data.keys().hasOnly(['uid', 'email', 'createdAt']) &&
+        data.uid is string && data.uid.size() >= 1 && data.uid.size() <= 128 && data.uid.matches('^[a-zA-Z0-9_\\-]+$') &&
+        data.uid == request.auth.uid &&
+        data.email is string && data.email.size() >= 3 && data.email.size() <= 160 &&
+        data.createdAt is timestamp;
+    }
+
+    // Entity Blueprint 2: Product
+    function isValidProduct(data) {
+      return data.keys().hasAll([
+          'name', 'category', 'price', 'quantity', 'soldCount',
+          'description', 'imageUrl', 'sku', 'featured3dModel',
+          'isPublished', 'ownerId', 'createdAt', 'updatedAt'
+        ]) &&
+        data.keys().hasOnly([
+          'name', 'category', 'price', 'quantity', 'soldCount',
+          'description', 'imageUrl', 'sku', 'featured3dModel',
+          'isPublished', 'ownerId', 'createdAt', 'updatedAt'
+        ]) &&
+        data.name is string && data.name.size() >= 1 && data.name.size() <= 120 &&
+        data.category is string && data.category.size() <= 40 &&
+        data.category in ['Handbags', 'Dresses', 'Outfits', 'Keychains', 'Accessories'] &&
+        data.price is number && data.price >= 0 && data.price <= 1000000 &&
+        data.quantity is int && data.quantity >= 0 && data.quantity <= 100000 &&
+        data.soldCount is int && data.soldCount >= 0 && data.soldCount <= 1000000 &&
+        data.description is string && data.description.size() >= 1 && data.description.size() <= 1000 &&
+        data.imageUrl is string && data.imageUrl.size() >= 1 && data.imageUrl.size() <= 650000 &&
+        data.sku is string && data.sku.size() >= 1 && data.sku.size() <= 40 &&
+        data.featured3dModel is string && data.featured3dModel.size() <= 20 &&
+        data.featured3dModel in ['handbag', 'dress', 'keychain', 'outfit', 'none'] &&
+        data.isPublished is bool &&
+        data.ownerId is string && data.ownerId.size() >= 1 && data.ownerId.size() <= 128 && data.ownerId.matches('^[a-zA-Z0-9_\\-]+$') &&
+        data.createdAt is timestamp &&
+        data.updatedAt is timestamp;
+    }
+
+    // Entity Blueprint 3: Booking
+    function isValidBooking(data) {
+      return data.keys().hasAll([
+          'orderNumber', 'customerId', 'customerName', 'customerPhone',
+          'deliveryAddress', 'notes', 'itemsSummary', 'itemIds',
+          'totalQuantity', 'totalAmount', 'status', 'createdAt', 'updatedAt'
+        ]) &&
+        data.keys().hasOnly([
+          'orderNumber', 'customerId', 'customerName', 'customerPhone',
+          'deliveryAddress', 'notes', 'itemsSummary', 'itemIds',
+          'totalQuantity', 'totalAmount', 'status', 'createdAt', 'updatedAt'
+        ]) &&
+        data.orderNumber is string && data.orderNumber.size() >= 4 && data.orderNumber.size() <= 32 &&
+        data.customerId is string && data.customerId.size() >= 1 && data.customerId.size() <= 128 && data.customerId.matches('^[a-zA-Z0-9_\\-]+$') &&
+        data.customerName is string && data.customerName.size() >= 1 && data.customerName.size() <= 100 &&
+        data.customerPhone is string && data.customerPhone.size() >= 5 && data.customerPhone.size() <= 40 &&
+        data.deliveryAddress is string && data.deliveryAddress.size() >= 3 && data.deliveryAddress.size() <= 300 &&
+        data.notes is string && data.notes.size() <= 400 &&
+        data.itemsSummary is string && data.itemsSummary.size() >= 1 && data.itemsSummary.size() <= 1500 &&
+        data.itemIds is string && data.itemIds.size() >= 1 && data.itemIds.size() <= 600 &&
+        data.totalQuantity is int && data.totalQuantity >= 1 && data.totalQuantity <= 1000 &&
+        data.totalAmount is number && data.totalAmount >= 0 && data.totalAmount <= 10000000 &&
+        data.status is string && data.status.size() <= 20 &&
+        data.status in ['Pending', 'Confirmed', 'Ready', 'Completed', 'Cancelled'] &&
+        data.createdAt is timestamp &&
+        data.updatedAt is timestamp;
+    }
+
+    // Collection 1: /admins/{adminId}
+    match /admins/{adminId} {
+      allow get: if isVerifiedUser() && isValidId(adminId) && (request.auth.uid == adminId || isBootstrappedOwner());
+      allow list: if isBootstrappedOwner();
+      allow create: if isVerifiedUser() &&
+        isValidId(adminId) &&
+        adminId == request.auth.uid &&
+        isValidAdminRole(incoming()) &&
+        incoming().createdAt == request.time;
+      allow update, delete: if false;
+    }
+
+    // Collection 2: /products/{productId}
+    match /products/{productId} {
+      // Customers can browse published products without signing in first
+      allow get: if isValidId(productId) && (existing().isPublished == true || isAdmin());
+      allow list: if existing().isPublished == true || isAdmin();
+
+      allow create: if isVerifiedUser() &&
+        isValidId(productId) &&
+        isValidProduct(incoming()) &&
+        incoming().ownerId == request.auth.uid &&
+        incoming().createdAt == request.time &&
+        incoming().updatedAt == request.time &&
+        isAdmin();
+
+      allow update: if isVerifiedUser() &&
+        isValidId(productId) &&
+        isValidProduct(incoming()) &&
+        incoming().createdAt == existing().createdAt &&
+        incoming().ownerId == existing().ownerId &&
+        incoming().updatedAt == request.time && (
+          // Action 1: Owner full catalog/inventory edit
+          (
+            isAdmin() &&
+            incoming().diff(existing()).affectedKeys().hasOnly([
+              'name', 'category', 'price', 'quantity', 'soldCount',
+              'description', 'imageUrl', 'sku', 'featured3dModel',
+              'isPublished', 'updatedAt'
+            ])
+          ) ||
+          // Action 2: Customer stock reservation during booking
+          (
+            existing().isPublished == true &&
+            incoming().diff(existing()).affectedKeys().hasOnly(['quantity', 'soldCount', 'updatedAt']) &&
+            incoming().quantity <= existing().quantity &&
+            incoming().soldCount >= existing().soldCount &&
+            (existing().quantity - incoming().quantity) == (incoming().soldCount - existing().soldCount)
+          )
+        );
+
+      allow delete: if isVerifiedUser() && isValidId(productId) && isAdmin();
+    }
+
+    // Collection 3: /bookings/{bookingId}
+    match /bookings/{bookingId} {
+      allow get: if isVerifiedUser() &&
+        isValidId(bookingId) &&
+        (existing().customerId == request.auth.uid || isAdmin());
+
+      allow list: if isVerifiedUser() &&
+        (existing().customerId == request.auth.uid || isAdmin());
+
+      allow create: if isVerifiedUser() &&
+        isValidId(bookingId) &&
+        isValidBooking(incoming()) &&
+        incoming().customerId == request.auth.uid &&
+        incoming().status == 'Pending' &&
+        incoming().createdAt == request.time &&
+        incoming().updatedAt == request.time;
+
+      allow update: if isVerifiedUser() &&
+        isValidId(bookingId) &&
+        isValidBooking(incoming()) &&
+        incoming().customerId == existing().customerId &&
+        incoming().orderNumber == existing().orderNumber &&
+        incoming().createdAt == existing().createdAt &&
+        incoming().updatedAt == request.time && (
+          // Action 1: Admin status & fulfillment update
+          (
+            isAdmin() &&
+            incoming().diff(existing()).affectedKeys().hasOnly(['status', 'notes', 'updatedAt'])
+          ) ||
+          // Action 2: Customer cancellation of a non-terminal pending booking
+          (
+            existing().customerId == request.auth.uid &&
+            existing().status == 'Pending' &&
+            incoming().status == 'Cancelled' &&
+            incoming().diff(existing()).affectedKeys().hasOnly(['status', 'updatedAt'])
+          )
+        );
+
+      allow delete: if isVerifiedUser() && isValidId(bookingId) && isAdmin();
+    }
+  }
+}

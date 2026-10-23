@@ -1,0 +1,6 @@
+{
+  "name": "Sidi Outfits",
+  "description": "Luxury fashion house and mobile-first boutique for signature handbags, dresses, tailored outfits, and artisanal keychains with interactive 3D atelier inspection and bulk owner inventory studio.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
